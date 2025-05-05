@@ -49,3 +49,28 @@ for i in range(10):
     plt.axis('off')
     plt.imshow(X_train[i, :, :, :].numpy().reshape(28, 28), cmap = "gray_r")
     plt.title('Class: ' + str(y_train[i].item()))
+    
+
+''' 6. AutoEncoder (AE) 모델 설계하기 '''
+class AE(nn.Module):
+    def __init__(self):
+        super(AE,self).__init__()
+        
+        self.encoder = nn.Sequential(
+            nn.Linear(28*28, 512),
+            nn.ReLU(),
+            nn.Linear(512,256),
+            nn.ReLU(),
+            nn.Linear(256,32),
+        )
+        self.decoder = nn.Sequential(
+            nn.Linear(32, 256),
+            nn.ReLU(),
+            nn.Linear(256, 512),
+            nn.ReLU(),
+            nn.Linear(512, 28 * 28),
+        )
+        def forward(self, x):
+            encoded = self.encoder(x)
+            decoded = self.decoder(encoded)
+            return encoded, decoded
