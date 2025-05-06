@@ -76,7 +76,6 @@ class AE(nn.Module):
             return encoded, decoded
         
 ''' 7. Optimizer, Objective Function 설정하기 '''
-
 model = AE().to(DEVICE)
 optimizer = torch.optim.Adam(model.parameters(), lr = 0.001)
 criterion = nn.MSELoss()
