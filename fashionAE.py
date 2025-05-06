@@ -21,7 +21,7 @@ EPOCHS = 10
 train_dataset = datasets.FashionMNIST(root = "../data/FashionMNIST",
                                       train = True,
                                       download = True,
-                                      transform = transforms.ToTensor())
+                                      transform = transforms.ToTensor())       # 0~255 범위의 픽셀 값을 0~1 범위로 정규화하는 과정은 이 코드에서 transforms.ToTensor() 부분에 포함
 
 test_dataset = datasets.FashionMNIST(root = "../data/FashionMNIST",
                                      train = False,
@@ -52,16 +52,16 @@ for i in range(10):
     
 
 ''' 6. AutoEncoder (AE) 모델 설계하기 '''
-class AE(nn.Module):
+class AE(nn.Module):                    
     def __init__(self):
-        super(AE,self).__init__()
+        super(AE,self).__init__()       # 부모 클래스인 nn.Module의 초기화 메서드를 실행. AE는 nn.Module을 상속받았기 때문에, PyTorch 내부 기능이 제대로 작동하려면 super()로 부모 클래스의 __init__()을 꼭 호출
         
-        self.encoder = nn.Sequential(
+        self.encoder = nn.Sequential(   # nn.Sequential을 사용해서 여러 층을 순차적으로 연결. 입력인 28×28 크기의 이미지를 펼쳐서(784차원) 점점 줄여 32차원의 잠재 벡터(latent vector) 로 만드는 과정
             nn.Linear(28*28, 512),
             nn.ReLU(),
             nn.Linear(512,256),
             nn.ReLU(),
-            nn.Linear(256,32),
+            nn.Linear(256,32),          # 마지막 쉼표는 문법적으로 꼭 필요하진 않지만, 가독성과 유지보수를 위해 자주 넣음
         )
         self.decoder = nn.Sequential(
             nn.Linear(32, 256),
@@ -70,10 +70,10 @@ class AE(nn.Module):
             nn.ReLU(),
             nn.Linear(512, 28 * 28),
         )
-        def forward(self, x):
-            encoded = self.encoder(x)
-            decoded = self.decoder(encoded)
-            return encoded, decoded
+    def forward(self, x):
+        encoded = self.encoder(x)
+        decoded = self.decoder(encoded)
+        return encoded, decoded         # 튜플 형태로 여러 값을 동시에 반환
         
 ''' 7. Optimizer, Objective Function 설정하기 '''
 model = AE().to(DEVICE)
@@ -85,14 +85,14 @@ print(model)
 ''' 8. AE 모델 학습을 진행하며 학습 데이터에 대한 모델 성능을 확인하는 함수 정의 '''
 def train(model, train_loader, optimizer, log_interval):
     model.train()
-    for batch_idx, (image, _) in enumerate(train_loader):
-        image = image.view(-1, 28 * 28).to(DEVICE)
-        target = image.view(-1, 28 * 28).to(DEVICE)
-        optimizer.zero_grad()
-        encoded, decoded = model(image)
-        loss = criterion(decoded, target)
-        loss.backward()
-        optimizer.step()
+    for batch_idx, (image, _) in enumerate(train_loader):   # 반복문에서 리스트나 데이터셋을 순회하면서 인덱스와 값 둘 다 동시에 가져오는 파이썬 문법
+        image = image.view(-1, 28 * 28).to(DEVICE)          # AE의 Input은 28*28 크기의 1차원 레이어이므로 2차원 이미지 데이터를 1차원 데이터로 재구성해 할당해야 함. 
+        target = image.view(-1, 28 * 28).to(DEVICE)         # target은 복원해야할 이미지 자체. AE는 정답 클래스는 필요 없지만 입력 이미지 그대로 복원하는 것이 목표. 
+        optimizer.zero_grad()                               # 이전 배치에서 계산된 기울기를 모두 0으로 초기화. PyTorch는 기본적으로 기울기를 누적하기 때문에, 매 배치마다 초기화하지 않으면 이전 값이 계속 더해져서 학습 망가짐. 
+        encoded, decoded = model(image)                     # 입력 이미지를 저차원 표현으로 압축하고, 다시 복원한 결과까지 한꺼번에 받아오는 과정
+        loss = criterion(decoded, target)                   # 복원된 이미지 decoded와 원본 이미지 target 사이의 오차를 계산
+        loss.backward()                                     # 그 오차를 기준으로 각 가중치에 대한 기울기(gradient)를 자동으로 계산 (역전파)
+        optimizer.step()                                    # 계산된 기울기를 바탕으로 가중치를 실제로 업데이트해서 모델을 학습
 
         if batch_idx % log_interval == 0:
             print("Train Epoch: {} [{}/{} ({:.0f}%)]\tTrain Loss: {:.6f}".format(
