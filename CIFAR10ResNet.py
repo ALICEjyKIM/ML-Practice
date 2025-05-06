@@ -51,47 +51,62 @@ for i in range(10):
     plt.imshow(np.transpose(X_train[i], (1, 2, 0)))
     plt.title('Class: ' + str(y_train[i].item()))
 
-''' 6. Convolutional Neural Network (CNN) 모델 설계하기 '''
-class CNN(nn.Module):
-    def __init__(self):
-        super(CNN, self).__init__()
-        self.conv1 = nn.Conv2d(
-            in_channels = 3,        # CIFAR-10 이미지가 RGB 컬러 이미지라서 3개의 채널을 가지기 때문에
-            out_channels = 8,       # 이 레이어가 8개의 필터(즉 feature map)를 만들어서 특징을 추출하겠다는 의미
-            kernel_size = 3, 
-            padding = 1)
-        self.conv2 = nn.Conv2d(
-            in_channels = 8,        # 첫 번째 Conv 레이어가 출력한 8개의 feature map을 입력으로 받기 때문에 8
-            out_channels = 16,      # 8채널을 입력으로 받아 다시 16채널의 feature map으로 변환. 일반적으로 CNN에서는 레이어가 깊어질수록 필터 수(out_channels)를 늘리는 편.  깊은 층으로 갈수록 더 추상적이고 복잡한 특징을 학습해야 하기 때문.
-            kernel_size = 3, 
-            padding = 1)
-        self.pool = nn.MaxPool2d(
-            kernel_size = 2, 
-            stride = 2)
-        self.fc1 = nn.Linear(8 * 8 * 16, 64)
-        self.fc2 = nn.Linear(64, 32)
-        self.fc3 = nn.Linear(32, 10)
+''' 6. ResNet 모델 설계하기 '''
+class BasicBlock(nn.Module):
+    def __init__(self, in_planes, planes, stride = 1):
+        super(BasicBlock, self).__init__()
+        self.conv1 = nn.Conv2d(in_planes, planes, kernel_size = 3, stride = stride, padding = 1, bias = False)
+        self.bn1 = nn.BatchNorm2d(planes)
+        self.conv2 = nn.Conv2d(planes, planes, kernel_size = 3, stride = 1, padding = 1, bias = False)
+        self.bn2 = nn.BatchNorm2d(planes)
         
+        self.shortcut = nn.Sequential()
+        if stride != 1 or in_planes != planes:
+            self.shortcut = nn.Sequential(
+                nn.Conv2d(in_planes, planes, kernel_size = 1, stride = stride, bias = False),
+                nn.BatchNorm2d(planes))
+    
     def forward(self, x):
-        x = self.conv1(x)
-        x = F.relu(x)
-        x = self.pool(x)
-        x = self.conv2(x)
-        x = F.relu(x)
-        x = self.pool(x)
+        out = F.relu(self.bn1(self.conv1(x)))
+        out = self.bn2(self.conv2(out))
+        out += self.shortcut(x)
+        out = F.relu(out)
+        return out
+    
+class ResNet(nn.Module):
+    def __init__(self, num_classes = 10):
+        super(ResNet, self).__init__()
+        self.in_planes = 16
         
-        x = x.view(-1, 8 * 8 * 16)
-        x = self.fc1(x)
-        x = F.relu(x)
-        x = self.fc2(x)
-        x = F.relu(x)
-        x = self.fc3(x)
-        x = F.log_softmax(x)
-        return x
+        self.conv1 = nn.Conv2d(3, 16, kernel_size = 3, stride = 1, padding = 1, bias = False)
+        self.bn1 = nn.BatchNorm2d(16)
+        self.layer1 = self._make_layer(16, 2, stride = 1)
+        self.layer2 = self._make_layer(32, 2, stride = 2)
+        self.layer3 = self._make_layer(64, 2, stride = 2)
+        self.linear = nn.Linear(64, num_classes)
+        
+    def _make_layer(self, planes, num_blocks, stride):
+        strides = [stride] + [1] * (num_blocks  - 1)
+        layers = []
+        for stride in strides:
+            layers.append(BasicBlock(self.in_planes, planes, stride))
+            self.in_planes = planes
+        return nn.Sequential(*layers)
+    
+    def forward(self, x):
+        out = F.relu(self.bn1(self.conv1(x)))
+        out = self.layer1(out)
+        out = self.layer2(out)
+        out = self.layer3(out)
+        out = F.avg_pool2d(out, 8)
+        out = out.view(out.size(0), -1)
+        out = self.linear(out)
+        return out
 
 
 
-model = CNN().to(DEVICE)
+''' 7. Optimizer, Objective Function 설정하기 '''
+model = ResNet().to(DEVICE)
 optimizer = torch.optim.Adam(model.parameters(), lr = 0.001)
 criterion = nn.CrossEntropyLoss()
 
