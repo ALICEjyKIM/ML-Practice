@@ -84,7 +84,7 @@ print(model)
 
 ''' 8. AE 모델 학습을 진행하며 학습 데이터에 대한 모델 성능을 확인하는 함수 정의 '''
 def train(model, train_loader, optimizer, log_interval):
-    model.train()
+    model.train()                                           # 모델을 train mode로 설정
     for batch_idx, (image, _) in enumerate(train_loader):   # 반복문에서 리스트나 데이터셋을 순회하면서 인덱스와 값 둘 다 동시에 가져오는 파이썬 문법
         image = image.view(-1, 28 * 28).to(DEVICE)          # AE의 Input은 28*28 크기의 1차원 레이어이므로 2차원 이미지 데이터를 1차원 데이터로 재구성해 할당해야 함. 
         target = image.view(-1, 28 * 28).to(DEVICE)         # target은 복원해야할 이미지 자체. AE는 정답 클래스는 필요 없지만 입력 이미지 그대로 복원하는 것이 목표. 
@@ -106,26 +106,27 @@ def evaluate(model, test_loader):
     test_loss = 0
     real_image = []
     gen_image = []
-    with torch.no_grad():
+    with torch.no_grad():                                   # 평가 과정에서는 기울기 계산 X
         for image, _ in test_loader:
-            image = image.view(-1, 28 * 28).to(DEVICE)
-            target = image.view(-1, 28 * 28).to(DEVICE)
+            image = image.view(-1, 28 * 28).to(DEVICE)      # 이미지 데이터를 28×28에서 1차원 벡터로 펼치고 GPU 혹은 CPU로 이동
+            target = image.view(-1, 28 * 28).to(DEVICE)     # target은 복원할 정답값으로, 입력 이미지와 동일
             encoded, decoded = model(image)
             
-            test_loss += criterion(decoded, image).item()
-            real_image.append(image.to("cpu"))
+            test_loss += criterion(decoded, image).item()   # 복원된 이미지(decoded)와 원본(image) 간의 손실을 계산해서 test_loss에 누적
+            real_image.append(image.to("cpu"))              # 시각화 등을 위해 GPU에서 CPU로 데이터를 이동시켜 리스트에 저장
             gen_image.append(decoded.to("cpu"))
             
-    test_loss /= (len(test_loader.dataset) / BATCH_SIZE)
+    test_loss /= (len(test_loader.dataset) / BATCH_SIZE)    # 총 손실을 평균 손실로 바꿈
 
     return test_loss, real_image, gen_image
 
 ''' 10. AutoEncoder 학습 실행하며 Test set의 Reconstruction Error 확인하기 '''
 for Epoch in range(1, EPOCHS + 1):
-    train(model, train_loader, optimizer, log_interval = 200)
-    test_loss, real_image, gen_image = evaluate(model, test_loader)
-    print("\n[EPOCH: {}], \tTest Loss: {:.4f}".format(Epoch, test_loss))
-    f, a = plt.subplots(2, 10, figsize = (10, 4))
+    train(model, train_loader, optimizer, log_interval = 200)               # 현재 에폭에서 모델을 학습시킴. 200번째 배치마다 로그를 출력
+    test_loss, real_image, gen_image = evaluate(model, test_loader)         # 학습이 끝난 후, 검증 데이터셋(test_loader) 으로 모델을 평가
+    print("\n[EPOCH: {}], \tTest Loss: {:.4f}\n".format(Epoch, test_loss))
+    
+    f, a = plt.subplots(2, 10, figsize = (10, 4))                           # 이미지 20개를 시각화할 수 있는 2행 10열짜리 서브플롯(그래프 틀) 
     for i in range(10):
         img = np.reshape(real_image[0][i], (28, 28))
         a[0][i].imshow(img, cmap = "gray_r")
