@@ -55,9 +55,19 @@ for i in range(10):
 class CNN(nn.Module):
     def __init__(self):
         super(CNN, self).__init__()
-        self.conv1 = nn.Conv2d(in_channels = 3, out_channels = 8, kernel_size = 3, padding = 1)
-        self.conv2 = nn.Conv2d(in_channels = 8, out_channels = 16, kernel_size = 3, padding = 1)
-        self.pool = nn.MaxPool2d(kernel_size = 2, stride = 2)
+        self.conv1 = nn.Conv2d(
+            in_channels = 3,        # CIFAR-10 이미지가 RGB 컬러 이미지라서 3개의 채널을 가지기 때문에
+            out_channels = 8,       # 이 레이어가 8개의 필터(즉 feature map)를 만들어서 특징을 추출하겠다는 의미
+            kernel_size = 3, 
+            padding = 1)
+        self.conv2 = nn.Conv2d(
+            in_channels = 8,        # 첫 번째 Conv 레이어가 출력한 8개의 feature map을 입력으로 받기 때문에 8
+            out_channels = 16,      # 8채널을 입력으로 받아 다시 16채널의 feature map으로 변환. 일반적으로 CNN에서는 레이어가 깊어질수록 필터 수(out_channels)를 늘리는 편.  깊은 층으로 갈수록 더 추상적이고 복잡한 특징을 학습해야 하기 때문.
+            kernel_size = 3, 
+            padding = 1)
+        self.pool = nn.MaxPool2d(
+            kernel_size = 2, 
+            stride = 2)
         self.fc1 = nn.Linear(8 * 8 * 16, 64)
         self.fc2 = nn.Linear(64, 32)
         self.fc3 = nn.Linear(32, 10)
